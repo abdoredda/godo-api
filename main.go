@@ -3,14 +3,23 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
+	"task-manager-api/db"
 	"task-manager-api/handler"
 	"task-manager-api/repository"
 	"task-manager-api/service"
+
+	"github.com/joho/godotenv"
 )
 
 func handleUsers(w http.ResponseWriter, r *http.Request) {}
 
 func main() {
+	godotenv.Load()
+	db, err := db.NewDB(os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatalf("Failed to connect to the database with err %v", err)
+	}
 	repo := repository.NewTaskRepository()
 	taskService := service.NewTaskService(repo)
 	h := handler.NewTaskHandler(taskService)
