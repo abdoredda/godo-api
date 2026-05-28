@@ -10,6 +10,7 @@ import (
 	"task-manager-api/service"
 
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 func handleUsers(w http.ResponseWriter, r *http.Request) {}
@@ -20,7 +21,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to the database with err %v", err)
 	}
-	repo := repository.NewTaskRepository()
+	repo := repository.NewTaskRepository(db)
 	taskService := service.NewTaskService(repo)
 	h := handler.NewTaskHandler(taskService)
 

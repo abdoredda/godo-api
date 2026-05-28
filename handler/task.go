@@ -7,14 +7,21 @@ import (
 	"net/http"
 	"strconv"
 	"task-manager-api/model"
-	"task-manager-api/service"
 )
 
-type TaskHandler struct {
-	taskService *service.TaskService
+type taskService interface {
+	CreateTask(task model.Task) (model.Task, error)
+	UpdateTask(id int, data model.UpdateTask) (model.Task, error)
+	DeleteTask(int) error
+	GetTask(int) (task model.Task, err error)
+	GetTasks() (tasks []model.Task, err error)
 }
 
-func NewTaskHandler(service *service.TaskService) *TaskHandler {
+type TaskHandler struct {
+	taskService taskService
+}
+
+func NewTaskHandler(service taskService) *TaskHandler {
 	return &TaskHandler{taskService: service}
 }
 
@@ -115,9 +122,19 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 		var data model.UpdateTask
 
 		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			if err := json.NewEncoder(w).Encode(map[string]string{
 				"error": "can't parsing the request body",
+			}); err != nil {
+				log.Printf("failed to encode error response: %v", err)
+			}
+			return
+		}
+
+		if data.Title == nil || data.Done == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			if err := json.NewEncoder(w).Encode(map[string]string{
+				"error": "title and done fields are required",
 			}); err != nil {
 				log.Printf("failed to encode error response: %v", err)
 			}

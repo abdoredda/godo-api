@@ -2,7 +2,7 @@ package model
 
 import "errors"
 
-var ErrNotFound = errors.New("Not Found")
+var ErrNotFound = errors.New("not found")
 
 type Task struct {
 	ID    int    `json:"id"`
