@@ -56,6 +56,23 @@ func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
+
+		var validationErr []string
+		if rTask.Title == "" {
+			validationErr = append(validationErr, "title must not be empty")
+		} else if len(rTask.Title) < 3 {
+			validationErr = append(validationErr, "title must be at least 3 characters")
+		}
+		if len(validationErr) > 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			if err := json.NewEncoder(w).Encode(map[string][]string{
+				"error": validationErr,
+			}); err != nil {
+				log.Printf("failed to encode error response: %v", err)
+			}
+			return
+		}
+
 		task, err := h.taskService.CreateTask(rTask)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -120,7 +137,6 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 
 	case "PUT":
 		var data model.UpdateTask
-
 		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			if err := json.NewEncoder(w).Encode(map[string]string{
@@ -131,10 +147,19 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if data.Title == nil || data.Done == nil {
+		var validationErr []string
+		if data.Title == nil || *data.Title == "" {
+			validationErr = append(validationErr, "title must not be empty")
+		} else if len(*data.Title) < 3 {
+			validationErr = append(validationErr, "title must be at least 3 characters")
+		}
+		if data.Done == nil {
+			validationErr = append(validationErr, "done must be provided")
+		}
+		if len(validationErr) > 0 {
 			w.WriteHeader(http.StatusBadRequest)
-			if err := json.NewEncoder(w).Encode(map[string]string{
-				"error": "title and done fields are required",
+			if err := json.NewEncoder(w).Encode(map[string][]string{
+				"error": validationErr,
 			}); err != nil {
 				log.Printf("failed to encode error response: %v", err)
 			}
