@@ -14,3 +14,9 @@ type UpdateTask struct {
 	Title *string `json:"title"`
 	Done  *bool   `json:"done"`
 }
+
+type TaskFilter struct {
+	Page  int
+	Limit int
+	Done  *bool
+}

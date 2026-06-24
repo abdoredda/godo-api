@@ -10,7 +10,7 @@ type taskRepository interface {
 	UpdateTask(id int, data model.UpdateTask) (model.Task, error)
 	DeleteTask(int) error
 	GetTask(int) (task model.Task, err error)
-	GetTasks() (tasks []model.Task, err error)
+	GetTasks(model.TaskFilter) (tasks []model.Task, err error)
 }
 
 type TaskService struct {
@@ -49,8 +49,8 @@ func (s *TaskService) GetTask(id int) (model.Task, error) {
 	}
 	return task, nil
 }
-func (s *TaskService) GetTasks() ([]model.Task, error) {
-	tasks, err := s.repo.GetTasks()
+func (s *TaskService) GetTasks(filter model.TaskFilter) ([]model.Task, error) {
+	tasks, err := s.repo.GetTasks(filter)
 	if err != nil {
 		return nil, fmt.Errorf("getting tasks: %w", err)
 	}

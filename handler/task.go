@@ -14,7 +14,7 @@ type taskService interface {
 	UpdateTask(id int, data model.UpdateTask) (model.Task, error)
 	DeleteTask(int) error
 	GetTask(int) (task model.Task, err error)
-	GetTasks() (tasks []model.Task, err error)
+	GetTasks(model.TaskFilter) (tasks []model.Task, err error)
 }
 
 type TaskHandler struct {
@@ -27,10 +27,80 @@ func NewTaskHandler(service taskService) *TaskHandler {
 
 func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	page := 1
+	var done *bool
+	limit := 10
 
 	switch r.Method {
 	case "GET":
-		tasks, err := h.taskService.GetTasks()
+		if s := r.URL.Query().Get("page"); s != "" {
+			value, err := strconv.Atoi(s)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				if err := json.NewEncoder(w).Encode(map[string]string{
+					"error": "page must be a valid number",
+				}); err != nil {
+					log.Printf("failed to encode error response: %v", err)
+				}
+				return
+			}
+			if value <= 0 {
+				w.WriteHeader(http.StatusBadRequest)
+				if err := json.NewEncoder(w).Encode(map[string]string{
+					"error": "page must be greater than 0",
+				}); err != nil {
+					log.Printf("failed to encode error response: %v", err)
+				}
+				return
+			}
+			page = value
+		}
+
+		if s := r.URL.Query().Get("limit"); s != "" {
+			value, err := strconv.Atoi(s)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				if err := json.NewEncoder(w).Encode(map[string]string{
+					"error": "limit must be a valid number",
+				}); err != nil {
+					log.Printf("failed to encode error response: %v", err)
+				}
+				return
+			}
+			if value <= 0 || value > 100 {
+				w.WriteHeader(http.StatusBadRequest)
+				if err := json.NewEncoder(w).Encode(map[string]string{
+					"error": "limit must be greater than 0 and less than or equal 100",
+				}); err != nil {
+					log.Printf("failed to encode error response: %v", err)
+				}
+				return
+			}
+			limit = value
+		}
+
+		if d := r.URL.Query().Get("done"); d != "" {
+			value, err := strconv.ParseBool(d)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				if err := json.NewEncoder(w).Encode(map[string]string{
+					"error": "done must be a valid boolean value",
+				}); err != nil {
+					log.Printf("failed to encode error response: %v", err)
+				}
+				return
+			}
+
+			done = &value
+		}
+
+		filter := model.TaskFilter{
+			Done:  done,
+			Page:  page,
+			Limit: limit,
+		}
+
+		tasks, err := h.taskService.GetTasks(filter)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			if err := json.NewEncoder(w).Encode(map[string]string{

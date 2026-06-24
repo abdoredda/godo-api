@@ -69,7 +69,7 @@ func (r *TaskRepository) GetTask(id int) (model.Task, error) {
 	return t, nil
 }
 
-func (r *TaskRepository) GetTasks() ([]model.Task, error) {
+func (r *TaskRepository) GetTasks(filter model.TaskFilter) ([]model.Task, error) {
 	var tasks []model.Task
 	rows, err := r.db.Query("SELECT id, title, done FROM tasks")
 	if err != nil {
