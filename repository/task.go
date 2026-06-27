@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"strconv"
 	"task-manager-api/model"
 )
 
@@ -71,7 +72,24 @@ func (r *TaskRepository) GetTask(id int) (model.Task, error) {
 
 func (r *TaskRepository) GetTasks(filter model.TaskFilter) ([]model.Task, error) {
 	var tasks []model.Task
-	rows, err := r.db.Query("SELECT id, title, done FROM tasks")
+	var args []any
+	whereClause := ""
+
+	if filter.Done != nil {
+		args = append(args, *filter.Done)
+		whereClause = "WHERE done = $" + strconv.Itoa(len(args))
+	}
+
+	args = append(args, filter.Limit)
+	limitPlaceholder := "$" + strconv.Itoa(len(args))
+
+	args = append(args, filter.Page)
+	offsetPlaceholder := "$" + strconv.Itoa(len(args))
+
+	query := "SELECT id, title, done FROM tasks " + whereClause +
+		" LIMIT " + limitPlaceholder + " OFFSET " + offsetPlaceholder
+
+	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
