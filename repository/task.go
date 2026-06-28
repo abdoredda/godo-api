@@ -9,10 +9,16 @@ import (
 // var tasks []model.Task
 
 type TaskRepository struct {
-	db *sql.DB
+	db dbConnectionInterface
 }
 
-func NewTaskRepository(db *sql.DB) *TaskRepository {
+type dbConnectionInterface interface {
+	Query(string, ...any) (*sql.Rows, error)
+	QueryRow(string, ...any) *sql.Row
+	Exec(string, ...any) (sql.Result, error)
+}
+
+func NewTaskRepository(db dbConnectionInterface) *TaskRepository {
 	return &TaskRepository{db}
 }
 
@@ -73,6 +79,7 @@ func (r *TaskRepository) GetTask(id int) (model.Task, error) {
 func (r *TaskRepository) GetTasks(filter model.TaskFilter) ([]model.Task, error) {
 	var tasks []model.Task
 	var args []any
+	offset := (filter.Page - 1) * filter.Limit
 	whereClause := ""
 
 	if filter.Done != nil {
@@ -80,10 +87,11 @@ func (r *TaskRepository) GetTasks(filter model.TaskFilter) ([]model.Task, error)
 		whereClause = "WHERE done = $" + strconv.Itoa(len(args))
 	}
 
+	// offset =
 	args = append(args, filter.Limit)
 	limitPlaceholder := "$" + strconv.Itoa(len(args))
 
-	args = append(args, filter.Page)
+	args = append(args, offset)
 	offsetPlaceholder := "$" + strconv.Itoa(len(args))
 
 	query := "SELECT id, title, done FROM tasks " + whereClause +
