@@ -94,7 +94,7 @@ func (r *TaskRepository) GetTasks(filter model.TaskFilter) ([]model.Task, error)
 	args = append(args, offset)
 	offsetPlaceholder := "$" + strconv.Itoa(len(args))
 
-	query := "SELECT id, title, done FROM tasks " + whereClause +
+	query := "SELECT id, title, done FROM tasks " + whereClause + " ORDER BY id" +
 		" LIMIT " + limitPlaceholder + " OFFSET " + offsetPlaceholder
 
 	rows, err := r.db.Query(query, args...)
