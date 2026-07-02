@@ -42,12 +42,6 @@ func TestGetTasks_FilterByDone(t *testing.T) {
 	}
 	defer tx.Rollback()
 
-	type tTask struct {
-		id    int64
-		title string
-		done  *bool
-	}
-
 	task_1 := model.Task{
 		Title: "Learn Go",
 		Done:  true,
@@ -78,47 +72,48 @@ func TestGetTasks_FilterByDone(t *testing.T) {
 	repo := NewTaskRepository(tx)
 	done := true
 	undone := false
-	// Case 1: done not provided
-	FilterNotProvided := model.TaskFilter{
-		Page:  1,
-		Limit: 10,
-	}
-	data, err := repo.GetTasks(FilterNotProvided)
-	expected := []model.Task{
-		task_1,
-		task_2,
-		task_3,
-	}
-	if !reflect.DeepEqual(data, expected) {
-		t.Errorf("return %v expected %v", data, expected)
+
+	tests := []struct {
+		name           string
+		filterInp      model.TaskFilter
+		expectedOutput []model.Task
+	}{
+		{
+			name:      "done not provided",
+			filterInp: model.TaskFilter{Page: 1, Limit: 10},
+			expectedOutput: []model.Task{
+				task_1,
+				task_2,
+				task_3,
+			},
+		},
+		{
+			name:      "done = true",
+			filterInp: model.TaskFilter{Page: 1, Limit: 10, Done: &done},
+			expectedOutput: []model.Task{
+				task_1,
+				task_2,
+			},
+		},
+		{
+			name:      "done = false",
+			filterInp: model.TaskFilter{Page: 1, Limit: 10, Done: &undone},
+			expectedOutput: []model.Task{
+				task_3,
+			},
+		},
 	}
 
-	// Case 2: done = true
-	filterTrue := model.TaskFilter{
-		Page:  1,
-		Limit: 10,
-		Done:  &done,
-	}
-	data, err = repo.GetTasks(filterTrue)
-	expected = []model.Task{
-		task_1,
-		task_2,
-	}
-	if !reflect.DeepEqual(data, expected) {
-		t.Errorf("return %v expected %v", data, expected)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			data, err := repo.GetTasks(test.filterInp)
+			if err != nil {
+				t.Fatalf("error when calling GetTasks() error = %v", err)
+			}
+			if !reflect.DeepEqual(data, test.expectedOutput) {
+				t.Errorf("return %v expected %v", data, test.expectedOutput)
+			}
+		})
 	}
 
-	// Case 3: done = false
-	filterFalse := model.TaskFilter{
-		Page:  1,
-		Limit: 10,
-		Done:  &undone,
-	}
-	data, err = repo.GetTasks(filterFalse)
-	expected = []model.Task{
-		task_3,
-	}
-	if !reflect.DeepEqual(data, expected) {
-		t.Errorf("return %v expected %v", data, expected)
-	}
 }
