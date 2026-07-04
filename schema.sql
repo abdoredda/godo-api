@@ -1,6 +1,16 @@
-CREATE TABLE tasks (
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
     id SERIAL PRIMARY KEY,
     title VARCHAR(100) NOT NULL,
     done BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-)
+);
+
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS user_id INT REFERENCES users(id);
+-- backfill would go here if tasks had rows
+ALTER TABLE tasks ALTER COLUMN user_id SET NOT NULL;
