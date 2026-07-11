@@ -21,12 +21,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to the database with err %v", err)
 	}
-	repo := repository.NewTaskRepository(db)
-	taskService := service.NewTaskService(repo)
-	h := handler.NewTaskHandler(taskService)
 
-	http.HandleFunc("/tasks", h.HandleTasks)
-	http.HandleFunc("/tasks/{id}", h.HandleTask)
+	taskRepo := repository.NewTaskRepository(db)
+	userRepo := repository.NewUserRepository(db)
+
+	taskService := service.NewTaskService(taskRepo)
+	userService := service.NewUserService(userRepo)
+
+	taskHandler := handler.NewTaskHandler(taskService)
+	userHandler := handler.NewUserHandler(userService)
+
+	http.HandleFunc("/tasks", taskHandler.HandleTasks)
+	http.HandleFunc("/tasks/{id}", taskHandler.HandleTask)
+	http.HandleFunc("/users", userHandler.HandlerUsers)
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatalf("Failed to connect to the local server on port 8080 with err %v", err)
