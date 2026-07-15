@@ -9,6 +9,7 @@ import (
 
 type userServiceInterface interface {
 	UserRegister(user model.User) (model.User, error)
+	GetUserByUsername(username string) (model.User, error)
 }
 type UserHandler struct {
 	userService userServiceInterface
@@ -18,12 +19,29 @@ func (s *UserHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case "GET":
+		username := r.URL.Query().Get("username")
+		if username == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			err := json.NewEncoder(w).Encode(map[string]string{
+				"error": "username must be a valid number",
+			})
+			if err != nil {
+				log.Printf("error while trying to encode the response error = %v", err)
+				return
+			}
+			return
+		}
+
+		data, err := s.userService.GetUserById(username)
+		if err != nil {
+			return nil, err
+		}
 
 	case "POST":
+		var userRequest model.UserRequest
 		var user model.User
 		var userRes model.UserResponse
-
-		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&userRequest); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			err := json.NewEncoder(w).Encode(map[string]string{
 				"error": "invalid user syntax",
@@ -35,15 +53,35 @@ func (s *UserHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var validationErrors map
+		validationErrors := make(map[string]string)
 		// username not empty
-		if user.Username == "" {
-			validationErrors["errors"]["username"] = "username field is required"
+		if userRequest.Username == "" {
+			validationErrors["username"] = "username field is required"
 		}
 		// password length <= 8
-		if len(user.Password) < 8 {
-			validationErrors["errors"]["password"] = "password must equal or greater than 8"
+		if len(userRequest.Password) < 8 {
+			validationErrors["password"] = "password must equal or greater than 8"
 		}
+
+		if userRequest.ConfirmPassword != userRequest.Password {
+			validationErrors["confirm_password"] = "password and confirm_password fields must be the same"
+		}
+
+		if len(validationErrors) != 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			err := json.NewEncoder(w).Encode(map[string]any{
+				"errors": validationErrors,
+			})
+
+			if err != nil {
+				log.Printf("error while trying to encode the response error = %v", err)
+				return
+			}
+			return
+		}
+
+		user.Username = userRequest.Username
+		user.Password = userRequest.Password
 
 		data, err := s.userService.UserRegister(user)
 		if err != nil {
