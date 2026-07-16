@@ -9,10 +9,14 @@ import (
 
 type userServiceInterface interface {
 	UserRegister(user model.User) (model.User, error)
-	GetUserByUsername(username string) (model.User, error)
+	Login(user model.User) (model.User, error)
 }
 type UserHandler struct {
 	userService userServiceInterface
+}
+
+func NewUserHandler(userService userServiceInterface) *UserHandler {
+	return &UserHandler{userService: userService}
 }
 
 func (s *UserHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
@@ -30,11 +34,6 @@ func (s *UserHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			return
-		}
-
-		data, err := s.userService.GetUserById(username)
-		if err != nil {
-			return nil, err
 		}
 
 	case "POST":
@@ -114,3 +113,5 @@ func (s *UserHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+
+func (s *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {}

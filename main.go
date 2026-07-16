@@ -33,7 +33,8 @@ func main() {
 
 	http.HandleFunc("/tasks", taskHandler.HandleTasks)
 	http.HandleFunc("/tasks/{id}", taskHandler.HandleTask)
-	http.HandleFunc("/users", userHandler.HandlerUsers)
+	http.HandleFunc("/users", userHandler.HandleUsers)
+	http.HandleFunc("/login", userHandler.HandleLogin)
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatalf("Failed to connect to the local server on port 8080 with err %v", err)
