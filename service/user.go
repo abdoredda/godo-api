@@ -12,6 +12,7 @@ import (
 type userRepository interface {
 	CreateUser(user model.User) (model.User, error)
 	GetUserByUsername(username string) (model.User, error)
+	GetUserById(id int) (model.User, error)
 }
 
 type UserService struct {
@@ -33,7 +34,7 @@ func (s *UserService) UserRegister(user model.User) (model.User, error) {
 	u := model.User{Username: user.Username, Password: string(hashedPassword)}
 	data, err := s.UserRepo.CreateUser(u)
 	if err != nil {
-		return model.User{}, fmt.Errorf("error when trying to create a user error = %v", err)
+		return model.User{}, fmt.Errorf("error when trying to create new user error = %v", err)
 	}
 
 	return data, nil
@@ -59,6 +60,18 @@ func (s *UserService) Login(user model.User) (model.User, error) {
 	if err != nil {
 		log.Printf("failed login attempt for username %q: bad password", user.Username)
 		return model.User{}, model.ErrInvalidCredentials
+	}
+
+	return data, nil
+}
+
+func (s *UserService) GetUserById(id int) (model.User, error) {
+	data, err := s.UserRepo.GetUserById(id)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			return model.User{}, model.ErrNotFound
+		}
+		return model.User{}, err
 	}
 
 	return data, nil

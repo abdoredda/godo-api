@@ -33,3 +33,15 @@ func (s *UserRepository) GetUserByUsername(username string) (model.User, error) 
 
 	return user, nil
 }
+
+func (s *UserRepository) GetUserById(id int) (model.User, error) {
+	var user model.User
+	err := s.db.QueryRow("SELECT id, username, password FROM users WHERE id = %v", id).Scan(&user.ID, &user.Username, &user.Password)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return model.User{}, model.ErrNotFound
+		}
+		return model.User{}, err
+	}
+	return user, nil
+}

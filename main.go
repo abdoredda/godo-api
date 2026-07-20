@@ -34,6 +34,7 @@ func main() {
 	http.HandleFunc("/tasks", taskHandler.HandleTasks)
 	http.HandleFunc("/tasks/{id}", taskHandler.HandleTask)
 	http.HandleFunc("/users", userHandler.HandleUsers)
+	http.HandleFunc("/users/{id}", userHandler.HandleUser)
 	http.HandleFunc("/login", userHandler.HandleLogin)
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {

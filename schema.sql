@@ -12,5 +12,5 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS user_id INT REFERENCES users(id);
--- backfill would go here if tasks had rows
+
 ALTER TABLE tasks ALTER COLUMN user_id SET NOT NULL;

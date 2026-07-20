@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"task-manager-api/model"
 )
 
 type userServiceInterface interface {
 	UserRegister(user model.User) (model.User, error)
 	Login(user model.User) (model.User, error)
+	GetUserById(id int) (model.User, error)
 }
 type UserHandler struct {
 	userService userServiceInterface
@@ -114,4 +116,49 @@ func (s *UserHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (s *UserHandler) HandleUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	switch r.Method {
+	case "GET":
+		queryId := r.PathValue("id")
+		if queryId == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		id, err := strconv.Atoi(queryId)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			log.Printf("error while trying to convert id to int error = %v", err)
+			return
+		}
+
+		s.responseWithUser(id, w)
+	}
+}
+
 func (s *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {}
+
+func (s *UserHandler) responseWithUser(id int, w http.ResponseWriter) {
+	var user model.UserResponse
+	data, err := s.userService.GetUserById(id)
+	if err != nil {
+		if err == model.ErrNotFound {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	user.ID = data.ID
+	user.Username = data.Username
+
+	if err = json.NewEncoder(w).Encode(map[string]any{
+		"message": "user fetched successfuly",
+		"data":    user,
+	}); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("error while trying to encode the response error = %v", err)
+		return
+	}
+}
