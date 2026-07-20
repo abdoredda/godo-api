@@ -24,20 +24,6 @@ func NewUserHandler(userService userServiceInterface) *UserHandler {
 func (s *UserHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
-	case "GET":
-		username := r.URL.Query().Get("username")
-		if username == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			err := json.NewEncoder(w).Encode(map[string]string{
-				"error": "username must be a valid number",
-			})
-			if err != nil {
-				log.Printf("error while trying to encode the response error = %v", err)
-				return
-			}
-			return
-		}
-
 	case "POST":
 		var userRequest model.UserRequest
 		var user model.User
