@@ -68,10 +68,7 @@ func (s *UserService) Login(user model.User) (model.User, error) {
 func (s *UserService) GetUserById(id int) (model.User, error) {
 	data, err := s.UserRepo.GetUserById(id)
 	if err != nil {
-		if errors.Is(err, model.ErrNotFound) {
-			return model.User{}, model.ErrNotFound
-		}
-		return model.User{}, err
+		return model.User{}, fmt.Errorf("get user by id: %w", err)
 	}
 
 	return data, nil

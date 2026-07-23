@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -129,7 +130,7 @@ func (s *UserHandler) responseWithUser(id int, w http.ResponseWriter) {
 	var user model.UserResponse
 	data, err := s.userService.GetUserById(id)
 	if err != nil {
-		if err == model.ErrNotFound {
+		if errors.Is(err, model.ErrNotFound) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}

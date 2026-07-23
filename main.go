@@ -13,8 +13,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func handleUsers(w http.ResponseWriter, r *http.Request) {}
-
 func main() {
 	godotenv.Load()
 	db, err := db.NewDB(os.Getenv("DATABASE_URL"))
