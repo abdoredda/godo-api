@@ -24,7 +24,8 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 
 	taskService := service.NewTaskService(taskRepo)
-	userService := service.NewUserService(userRepo)
+	authService := service.NewAuthService(os.Getenv("JWT_SECRET"))
+	userService := service.NewUserService(userRepo, authService)
 
 	taskHandler := handler.NewTaskHandler(taskService)
 	userHandler := handler.NewUserHandler(userService)

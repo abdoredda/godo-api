@@ -11,8 +11,12 @@ type UserResponse struct {
 	Username string `json:"username"`
 }
 
-type UserRequest struct {
+type UserRegisterRequest struct {
 	Username        string `json:"username"`
 	Password        string `json:"password"`
 	ConfirmPassword string `json:"confirm_password"`
+}
+type UserLoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }

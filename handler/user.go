@@ -11,7 +11,7 @@ import (
 
 type userServiceInterface interface {
 	UserRegister(user model.User) (model.User, error)
-	Login(user model.User) (model.User, error)
+	Login(user model.User) (model.User, string, error)
 	GetUserById(id int) (model.User, error)
 }
 type UserHandler struct {
@@ -26,7 +26,7 @@ func (s *UserHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case "POST":
-		var userRequest model.UserRequest
+		var userRequest model.UserRegisterRequest
 		var user model.User
 		var userRes model.UserResponse
 		if err := json.NewDecoder(r.Body).Decode(&userRequest); err != nil {
@@ -124,7 +124,13 @@ func (s *UserHandler) HandleUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {}
+func (s *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	// parse and validate request (username & passwrd) $
+
+	// compare request pass with db pass bcrypt
+	// ture -> generate token and return user + token + err $
+	// false -> return  401 (genaric error)
+}
 
 func (s *UserHandler) responseWithUser(id int, w http.ResponseWriter) {
 	var user model.UserResponse
