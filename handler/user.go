@@ -125,8 +125,25 @@ func (s *UserHandler) HandleUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	// parse and validate request (username & passwrd) $
+	var loginRequest model.UserLoginRequest
+	var user model.User
+	err := json.NewDecoder(r.Body).Decode(&loginRequest)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		if err := json.NewEncoder(w).Encode(map[string]string{
+			"error": "invalid request body",
+		}); err != nil {
+			log.Printf("failed to encode error response: %v", err)
+		}
+		return
+	}
 
+	loggedUser, token, err := s.userService.Login(user)
+	if err != nil {
+		return nil, err
+	}
 	// compare request pass with db pass bcrypt
 	// ture -> generate token and return user + token + err $
 	// false -> return  401 (genaric error)
