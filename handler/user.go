@@ -31,13 +31,6 @@ func (s *UserHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 		var userRes model.UserResponse
 		if err := json.NewDecoder(r.Body).Decode(&userRequest); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			err := json.NewEncoder(w).Encode(map[string]string{
-				"error": "invalid user syntax",
-			})
-			if err != nil {
-				log.Printf("error while trying to encode the response error = %v", err)
-				return
-			}
 			return
 		}
 
@@ -57,14 +50,6 @@ func (s *UserHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 
 		if len(validationErrors) != 0 {
 			w.WriteHeader(http.StatusBadRequest)
-			err := json.NewEncoder(w).Encode(map[string]any{
-				"errors": validationErrors,
-			})
-
-			if err != nil {
-				log.Printf("error while trying to encode the response error = %v", err)
-				return
-			}
 			return
 		}
 
@@ -74,14 +59,7 @@ func (s *UserHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 		data, err := s.userService.UserRegister(user)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Printf("error while trying to encode the response error = %v", err)
-			err := json.NewEncoder(w).Encode(map[string]string{
-				"error": "could not register user",
-			})
-			if err != nil {
-				log.Printf("error while trying to encode the response error = %v", err)
-				return
-			}
+			log.Printf("error while registering user: %v", err)
 			return
 		}
 
@@ -99,6 +77,7 @@ func (s *UserHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 
 }
@@ -121,6 +100,8 @@ func (s *UserHandler) HandleUser(w http.ResponseWriter, r *http.Request) {
 		}
 
 		s.responseWithUser(id, w)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
@@ -129,24 +110,39 @@ func (s *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// parse and validate request (username & passwrd) $
 	var loginRequest model.UserLoginRequest
 	var user model.User
+	var userResponse model.UserResponse
 	err := json.NewDecoder(r.Body).Decode(&loginRequest)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(w).Encode(map[string]string{
-			"error": "invalid request body",
-		}); err != nil {
-			log.Printf("failed to encode error response: %v", err)
-		}
 		return
 	}
 
+	user.Username = loginRequest.Username
+	user.Password = loginRequest.Password
 	loggedUser, token, err := s.userService.Login(user)
+
 	if err != nil {
-		return nil, err
+		if errors.Is(err, model.ErrInvalidCredentials) {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
-	// compare request pass with db pass bcrypt
-	// ture -> generate token and return user + token + err $
-	// false -> return  401 (genaric error)
+
+	userResponse.ID = loggedUser.ID
+	userResponse.Username = loggedUser.Username
+
+	if err = json.NewEncoder(w).Encode(map[string]any{
+		"message": "user logged in successfuly",
+		"user":    userResponse,
+		"token":   token,
+	}); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("error while trying to encode the response error = %v", err)
+		return
+	}
 }
 
 func (s *UserHandler) responseWithUser(id int, w http.ResponseWriter) {

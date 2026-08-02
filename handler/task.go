@@ -35,22 +35,8 @@ func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		if s := r.URL.Query().Get("page"); s != "" {
 			value, err := strconv.Atoi(s)
-			if err != nil {
+			if err != nil || value <= 0 {
 				w.WriteHeader(http.StatusBadRequest)
-				if err := json.NewEncoder(w).Encode(map[string]string{
-					"error": "page must be a valid number",
-				}); err != nil {
-					log.Printf("failed to encode error response: %v", err)
-				}
-				return
-			}
-			if value <= 0 {
-				w.WriteHeader(http.StatusBadRequest)
-				if err := json.NewEncoder(w).Encode(map[string]string{
-					"error": "page must be greater than 0",
-				}); err != nil {
-					log.Printf("failed to encode error response: %v", err)
-				}
 				return
 			}
 			page = value
@@ -58,22 +44,8 @@ func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 
 		if s := r.URL.Query().Get("limit"); s != "" {
 			value, err := strconv.Atoi(s)
-			if err != nil {
+			if err != nil || value <= 0 || value > 100 {
 				w.WriteHeader(http.StatusBadRequest)
-				if err := json.NewEncoder(w).Encode(map[string]string{
-					"error": "limit must be a valid number",
-				}); err != nil {
-					log.Printf("failed to encode error response: %v", err)
-				}
-				return
-			}
-			if value <= 0 || value > 100 {
-				w.WriteHeader(http.StatusBadRequest)
-				if err := json.NewEncoder(w).Encode(map[string]string{
-					"error": "limit must be greater than 0 and less than or equal 100",
-				}); err != nil {
-					log.Printf("failed to encode error response: %v", err)
-				}
 				return
 			}
 			limit = value
@@ -83,11 +55,6 @@ func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 			value, err := strconv.ParseBool(d)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
-				if err := json.NewEncoder(w).Encode(map[string]string{
-					"error": "done must be a valid boolean value",
-				}); err != nil {
-					log.Printf("failed to encode error response: %v", err)
-				}
 				return
 			}
 
@@ -103,11 +70,7 @@ func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 		tasks, err := h.taskService.GetTasks(filter)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			if err := json.NewEncoder(w).Encode(map[string]string{
-				"error": "error while fetching tasks",
-			}); err != nil {
-				log.Printf("failed to encode error response: %v", err)
-			}
+			log.Printf("error while fetching tasks: %v", err)
 			return
 		}
 
@@ -119,11 +82,6 @@ func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 		var rTask model.Task
 		if err := json.NewDecoder(r.Body).Decode(&rTask); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			if err := json.NewEncoder(w).Encode(map[string]string{
-				"error": "invalid task syntax",
-			}); err != nil {
-				log.Printf("failed to encode error response: %v", err)
-			}
 			return
 		}
 
@@ -135,22 +93,13 @@ func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 		}
 		if len(validationErr) > 0 {
 			w.WriteHeader(http.StatusBadRequest)
-			if err := json.NewEncoder(w).Encode(map[string][]string{
-				"error": validationErr,
-			}); err != nil {
-				log.Printf("failed to encode error response: %v", err)
-			}
 			return
 		}
 
 		task, err := h.taskService.CreateTask(rTask)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			if err := json.NewEncoder(w).Encode(map[string]string{
-				"error": "error while creating the task",
-			}); err != nil {
-				log.Printf("failed to encode error response: %v", err)
-			}
+			log.Printf("error while creating the task: %v", err)
 			return
 		}
 
@@ -158,14 +107,8 @@ func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(task); err != nil {
 			log.Printf("failed to encode task response: %v", err)
 		}
-		// ---
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		if err := json.NewEncoder(w).Encode(map[string]string{
-			"error": "method not allowed",
-		}); err != nil {
-			log.Printf("failed to encode error response: %v", err)
-		}
 		return
 	}
 }
@@ -177,11 +120,6 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(w).Encode(map[string]string{
-			"error": "can't parsing id string",
-		}); err != nil {
-			log.Printf("failed to encode error response: %v", err)
-		}
 		return
 	}
 
@@ -193,27 +131,20 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
-			}
-			if err := json.NewEncoder(w).Encode(map[string]string{
-				"error": "error while getting the task",
-			}); err != nil {
-				log.Printf("failed to encode error response: %v", err)
+				log.Printf("error while getting task: %v", err)
 			}
 			return
 		}
 
-		json.NewEncoder(w).Encode(task)
+		if err := json.NewEncoder(w).Encode(task); err != nil {
+			log.Printf("failed to encode task response: %v", err)
+		}
 		return
 
 	case "PUT":
 		var data model.UpdateTask
 		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			if err := json.NewEncoder(w).Encode(map[string]string{
-				"error": "can't parsing the request body",
-			}); err != nil {
-				log.Printf("failed to encode error response: %v", err)
-			}
 			return
 		}
 
@@ -228,11 +159,6 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 		}
 		if len(validationErr) > 0 {
 			w.WriteHeader(http.StatusBadRequest)
-			if err := json.NewEncoder(w).Encode(map[string][]string{
-				"error": validationErr,
-			}); err != nil {
-				log.Printf("failed to encode error response: %v", err)
-			}
 			return
 		}
 
@@ -243,16 +169,14 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
-			}
-			if err := json.NewEncoder(w).Encode(map[string]string{
-				"error": "error while updating the task",
-			}); err != nil {
-				log.Printf("failed to encode error response: %v", err)
+				log.Printf("error while updating task: %v", err)
 			}
 			return
 		}
 
-		json.NewEncoder(w).Encode(task)
+		if err := json.NewEncoder(w).Encode(task); err != nil {
+			log.Printf("failed to encode task response: %v", err)
+		}
 		return
 
 	case "DELETE":
@@ -264,11 +188,7 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 			} else {
 				w.WriteHeader(http.StatusInternalServerError)
-			}
-			if err := json.NewEncoder(w).Encode(map[string]string{
-				"error": "error while deleting the task",
-			}); err != nil {
-				log.Printf("failed to encode error response: %v", err)
+				log.Printf("error while deleting task: %v", err)
 			}
 			return
 		}
@@ -276,11 +196,6 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		if err := json.NewEncoder(w).Encode(map[string]string{
-			"error": "method not allowed",
-		}); err != nil {
-			log.Printf("failed to encode error response: %v", err)
-		}
 		return
 	}
 }
