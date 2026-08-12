@@ -34,3 +34,20 @@ func (s *AuthService) GenerateToken(userId int) (string, error) {
 	}
 	return signedToken, nil
 }
+
+func (s *AuthService) ParseToken(token string) (Claims, error) {
+	claims := Claims{}
+	keyFunc := func(tokenString *jwt.Token) (any, error) {
+		if _, ok := tokenString.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", tokenString.Header["alg"])
+		}
+		return s.secret, nil
+	}
+
+	_, err := jwt.ParseWithClaims(token, &claims, keyFunc)
+	if err != nil {
+		return Claims{}, fmt.Errorf("error while parsing the token error = %w", err)
+	}
+
+	return claims, nil
+}
