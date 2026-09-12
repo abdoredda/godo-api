@@ -24,9 +24,9 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to ping test db: %v", err)
 	}
 
-	_, err = db.Exec("TRUNCATE TABLE tasks RESTART IDENTITY CASCADE")
+	_, err = db.Exec("TRUNCATE TABLE tasks, users RESTART IDENTITY CASCADE")
 	if err != nil {
-		log.Fatalf("failed to truncate tasks table: %v", err)
+		log.Fatalf("failed to truncate tables: %v", err)
 	}
 
 	testDB = db

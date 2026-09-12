@@ -22,9 +22,9 @@ func NewTaskRepository(db dbConnectionInterface) *TaskRepository {
 	return &TaskRepository{db}
 }
 
-func (r *TaskRepository) CreateTask(task model.Task) (model.Task, error) {
+func (r *TaskRepository) CreateTask(task model.Task, userID int) (model.Task, error) {
 
-	row := r.db.QueryRow("INSERT INTO tasks (title, done) VALUES ($1, $2) RETURNING id", task.Title, task.Done)
+	row := r.db.QueryRow("INSERT INTO tasks (title, done, user_id) VALUES ($1, $2, $3) RETURNING id", task.Title, task.Done, userID)
 	err := row.Scan(&task.ID)
 	if err != nil {
 		return model.Task{}, err
@@ -32,9 +32,9 @@ func (r *TaskRepository) CreateTask(task model.Task) (model.Task, error) {
 	return task, nil
 }
 
-func (r *TaskRepository) UpdateTask(id int, data model.UpdateTask) (model.Task, error) {
+func (r *TaskRepository) UpdateTask(id int, data model.UpdateTask, userID int) (model.Task, error) {
 	var updated model.Task
-	row := r.db.QueryRow("UPDATE tasks SET title = $1, done = $2 WHERE id = $3 RETURNING id, title, done", *data.Title, *data.Done, id)
+	row := r.db.QueryRow("UPDATE tasks SET title = $1, done = $2 WHERE id = $3 AND user_id = $4 RETURNING id, title, done", *data.Title, *data.Done, id, userID)
 	err := row.Scan(&updated.ID, &updated.Title, &updated.Done)
 	if err == sql.ErrNoRows {
 		return model.Task{}, model.ErrNotFound
@@ -45,8 +45,8 @@ func (r *TaskRepository) UpdateTask(id int, data model.UpdateTask) (model.Task, 
 	return updated, nil
 }
 
-func (r *TaskRepository) DeleteTask(id int) error {
-	result, err := r.db.Exec("DELETE FROM tasks WHERE id = $1", id)
+func (r *TaskRepository) DeleteTask(id int, userID int) error {
+	result, err := r.db.Exec("DELETE FROM tasks WHERE id = $1 AND user_id = $2", id, userID)
 	if err != nil {
 		return err
 	}
@@ -62,9 +62,9 @@ func (r *TaskRepository) DeleteTask(id int) error {
 	return nil
 }
 
-func (r *TaskRepository) GetTask(id int) (model.Task, error) {
+func (r *TaskRepository) GetTask(id int, userID int) (model.Task, error) {
 	var t model.Task
-	row := r.db.QueryRow("SELECT id, title, done FROM tasks WHERE id = $1", id)
+	row := r.db.QueryRow("SELECT id, title, done FROM tasks WHERE id = $1 AND user_id = $2 ", id, userID)
 	err := row.Scan(&t.ID, &t.Title, &t.Done)
 	if err == sql.ErrNoRows {
 		return model.Task{}, model.ErrNotFound
@@ -76,17 +76,18 @@ func (r *TaskRepository) GetTask(id int) (model.Task, error) {
 	return t, nil
 }
 
-func (r *TaskRepository) GetTasks(filter model.TaskFilter) ([]model.Task, error) {
+func (r *TaskRepository) GetTasks(filter model.TaskFilter, userID int) ([]model.Task, error) {
 	var tasks []model.Task
 	var args []any
 	offset := (filter.Page - 1) * filter.Limit
-	whereClause := ""
+
+	whereClause := "WHERE user_id = $1"
+	args = append(args, userID)
 
 	if filter.Done != nil {
 		args = append(args, *filter.Done)
-		whereClause = "WHERE done = $" + strconv.Itoa(len(args))
+		whereClause += " AND done = $" + strconv.Itoa(len(args))
 	}
-
 	// offset =
 	args = append(args, filter.Limit)
 	limitPlaceholder := "$" + strconv.Itoa(len(args))

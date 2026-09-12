@@ -2,9 +2,8 @@ package service
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/golang-jwt/jwt/v5"
+	"time"
 )
 
 type Claims struct {

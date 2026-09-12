@@ -6,15 +6,16 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"task-manager-api/middleware"
 	"task-manager-api/model"
 )
 
 type taskService interface {
-	CreateTask(task model.Task) (model.Task, error)
-	UpdateTask(id int, data model.UpdateTask) (model.Task, error)
-	DeleteTask(int) error
-	GetTask(int) (task model.Task, err error)
-	GetTasks(model.TaskFilter) (tasks []model.Task, err error)
+	CreateTask(task model.Task, userID int) (model.Task, error)
+	GetTasks(filter model.TaskFilter, userID int) ([]model.Task, error)
+	GetTask(taskID int, userID int) (model.Task, error)
+	UpdateTask(taskID int, data model.UpdateTask, userID int) (model.Task, error)
+	DeleteTask(taskID int, userID int) error
 }
 
 type TaskHandler struct {
@@ -26,7 +27,13 @@ func NewTaskHandler(service taskService) *TaskHandler {
 }
 
 func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
+
 	page := 1
 	var done *bool
 	limit := 10
@@ -67,7 +74,7 @@ func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 			Limit: limit,
 		}
 
-		tasks, err := h.taskService.GetTasks(filter)
+		tasks, err := h.taskService.GetTasks(filter, userID)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Printf("error while fetching tasks: %v", err)
@@ -96,7 +103,7 @@ func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		task, err := h.taskService.CreateTask(rTask)
+		task, err := h.taskService.CreateTask(rTask, userID)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Printf("error while creating the task: %v", err)
@@ -114,7 +121,13 @@ func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
+
 	trimmedTaskID := r.PathValue("id")
 	taskId, err := strconv.Atoi(trimmedTaskID)
 
@@ -125,7 +138,7 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case "GET":
-		task, err := h.taskService.GetTask(taskId)
+		task, err := h.taskService.GetTask(taskId, userID)
 		if err != nil {
 			if errors.Is(err, model.ErrNotFound) {
 				w.WriteHeader(http.StatusNotFound)
@@ -162,7 +175,7 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		task, err := h.taskService.UpdateTask(taskId, data)
+		task, err := h.taskService.UpdateTask(taskId, data, userID)
 
 		if err != nil {
 			if errors.Is(err, model.ErrNotFound) {
@@ -181,7 +194,7 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 
 	case "DELETE":
 
-		err = h.taskService.DeleteTask(taskId)
+		err = h.taskService.DeleteTask(taskId, userID)
 
 		if err != nil {
 			if errors.Is(err, model.ErrNotFound) {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"task-manager-api/db"
 	"task-manager-api/handler"
+	"task-manager-api/middleware"
 	"task-manager-api/repository"
 	"task-manager-api/service"
 
@@ -28,10 +29,14 @@ func main() {
 	userService := service.NewUserService(userRepo, authService)
 
 	taskHandler := handler.NewTaskHandler(taskService)
+	tasksHandler := http.HandlerFunc(taskHandler.HandleTasks)
+	taskItemHandler := http.HandlerFunc(taskHandler.HandleTask)
+	protectedTasksHandler := middleware.AuthMiddleware(tasksHandler, authService)
+	protectedTaskItemHandler := middleware.AuthMiddleware(taskItemHandler, authService)
 	userHandler := handler.NewUserHandler(userService)
 
-	http.HandleFunc("/tasks", taskHandler.HandleTasks)
-	http.HandleFunc("/tasks/{id}", taskHandler.HandleTask)
+	http.Handle("/tasks", protectedTasksHandler)
+	http.Handle("/tasks/{id}", protectedTaskItemHandler)
 	http.HandleFunc("/users", userHandler.HandleUsers)
 	http.HandleFunc("/users/{id}", userHandler.HandleUser)
 	http.HandleFunc("/login", userHandler.HandleLogin)
