@@ -2,8 +2,9 @@ package service
 
 import (
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type Claims struct {
@@ -37,7 +38,8 @@ func (s *AuthService) GenerateToken(userId int) (string, error) {
 func (s *AuthService) ParseToken(token string) (Claims, error) {
 	claims := Claims{}
 	keyFunc := func(tokenString *jwt.Token) (any, error) {
-		if _, ok := tokenString.Method.(*jwt.SigningMethodHMAC); !ok {
+
+		if tokenString.Method != jwt.SigningMethodHS256 {
 			return nil, fmt.Errorf("unexpected signing method: %v", tokenString.Header["alg"])
 		}
 		return s.secret, nil

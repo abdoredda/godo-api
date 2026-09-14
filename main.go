@@ -20,12 +20,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to the database with err %v", err)
 	}
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET not found")
+	}
 
 	taskRepo := repository.NewTaskRepository(db)
 	userRepo := repository.NewUserRepository(db)
 
 	taskService := service.NewTaskService(taskRepo)
-	authService := service.NewAuthService(os.Getenv("JWT_SECRET"))
+	authService := service.NewAuthService(jwtSecret)
 	userService := service.NewUserService(userRepo, authService)
 
 	taskHandler := handler.NewTaskHandler(taskService)
