@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: godo
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: godo
+    volumes:
+      - godo-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U godo -d godo"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  godo-data:
