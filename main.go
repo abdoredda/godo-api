@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"task-manager-api/db"
 	"task-manager-api/handler"
 	"task-manager-api/middleware"
@@ -45,7 +48,28 @@ func main() {
 	http.HandleFunc("/users/{id}", userHandler.HandleUser)
 	http.HandleFunc("/login", userHandler.HandleLogin)
 
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatalf("Failed to connect to the local server on port 8080 with err %v", err)
+	server := &http.Server{
+		Addr: ":8080",
 	}
+
+	// Run the HTTP server in another goroutine.
+	go func() {
+		if err := server.ListenAndServe(); err != nil {
+			log.Printf("server stopped: %v", err)
+		}
+	}()
+
+	// Listen for Ctrl+C or SIGTERM.
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
+	defer stop()
+
+	// Keep main alive until one of those signals arrives.
+	<-ctx.Done()
+
+	log.Println("shutdown signal received")
+
 }
