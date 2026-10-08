@@ -12,6 +12,7 @@ import (
 	"task-manager-api/middleware"
 	"task-manager-api/repository"
 	"task-manager-api/service"
+	"time"
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -52,24 +53,36 @@ func main() {
 		Addr: ":8080",
 	}
 
-	// Run the HTTP server in another goroutine.
+	// Run HTTP server separately.
 	go func() {
-		if err := server.ListenAndServe(); err != nil {
-			log.Printf("server stopped: %v", err)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("server error: %v", err)
 		}
 	}()
 
-	// Listen for Ctrl+C or SIGTERM.
-	ctx, stop := signal.NotifyContext(
+	// Wait for Ctrl+C or SIGTERM.
+	signalCtx, stop := signal.NotifyContext(
 		context.Background(),
 		os.Interrupt,
 		syscall.SIGTERM,
 	)
 	defer stop()
 
-	// Keep main alive until one of those signals arrives.
-	<-ctx.Done()
+	<-signalCtx.Done()
 
 	log.Println("shutdown signal received")
+
+	// Give existing requests up to 5 seconds to finish.
+	shutdownCtx, cancel := context.WithTimeout(
+		context.Background(),
+		5*time.Second,
+	)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("graceful shutdown failed: %v", err)
+	}
+
+	log.Println("server stopped")
 
 }
