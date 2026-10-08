@@ -50,37 +50,39 @@ func main() {
 	http.HandleFunc("/login", userHandler.HandleLogin)
 
 	server := &http.Server{
-		Addr: ":8080",
+		Addr:              ":8080",
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
-	// Run HTTP server separately.
+	// The goroutine reports failure through a channel instead of only logging it.
+	serverErr := make(chan error, 1)
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("server error: %v", err)
+			serverErr <- err
 		}
 	}()
 
-	// Wait for Ctrl+C or SIGTERM.
-	signalCtx, stop := signal.NotifyContext(
-		context.Background(),
-		os.Interrupt,
-		syscall.SIGTERM,
-	)
+	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	<-signalCtx.Done()
-
-	log.Println("shutdown signal received")
+	// Wait for whichever happens first: the server dies, or a signal arrives.
+	select {
+	case err := <-serverErr:
+		log.Fatalf("server failed: %v", err)
+	case <-signalCtx.Done():
+		log.Println("shutdown signal received")
+	}
 
 	// Give existing requests up to 5 seconds to finish.
-	shutdownCtx, cancel := context.WithTimeout(
-		context.Background(),
-		5*time.Second,
-	)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Printf("graceful shutdown failed: %v", err)
+		server.Close() // force-drop whatever is still running
 	}
 
 	log.Println("server stopped")
