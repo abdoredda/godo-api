@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -11,11 +12,11 @@ import (
 )
 
 type taskService interface {
-	CreateTask(task model.Task, userID int) (model.Task, error)
-	GetTasks(filter model.TaskFilter, userID int) ([]model.Task, error)
-	GetTask(taskID int, userID int) (model.Task, error)
-	UpdateTask(taskID int, data model.UpdateTask, userID int) (model.Task, error)
-	DeleteTask(taskID int, userID int) error
+	CreateTask(ctx context.Context, task model.Task, userID int) (model.Task, error)
+	GetTasks(ctx context.Context, filter model.TaskFilter, userID int) ([]model.Task, error)
+	GetTask(ctx context.Context, taskID int, userID int) (model.Task, error)
+	UpdateTask(ctx context.Context, taskID int, data model.UpdateTask, userID int) (model.Task, error)
+	DeleteTask(ctx context.Context, taskID int, userID int) error
 }
 
 type TaskHandler struct {
@@ -74,7 +75,7 @@ func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 			Limit: limit,
 		}
 
-		tasks, err := h.taskService.GetTasks(filter, userID)
+		tasks, err := h.taskService.GetTasks(r.Context(), filter, userID)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Printf("error while fetching tasks: %v", err)
@@ -103,7 +104,7 @@ func (h *TaskHandler) HandleTasks(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		task, err := h.taskService.CreateTask(rTask, userID)
+		task, err := h.taskService.CreateTask(r.Context(), rTask, userID)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Printf("error while creating the task: %v", err)
@@ -138,7 +139,7 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case "GET":
-		task, err := h.taskService.GetTask(taskId, userID)
+		task, err := h.taskService.GetTask(r.Context(), taskId, userID)
 		if err != nil {
 			if errors.Is(err, model.ErrNotFound) {
 				w.WriteHeader(http.StatusNotFound)
@@ -175,7 +176,7 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		task, err := h.taskService.UpdateTask(taskId, data, userID)
+		task, err := h.taskService.UpdateTask(r.Context(), taskId, data, userID)
 
 		if err != nil {
 			if errors.Is(err, model.ErrNotFound) {
@@ -194,7 +195,7 @@ func (h *TaskHandler) HandleTask(w http.ResponseWriter, r *http.Request) {
 
 	case "DELETE":
 
-		err = h.taskService.DeleteTask(taskId, userID)
+		err = h.taskService.DeleteTask(r.Context(), taskId, userID)
 
 		if err != nil {
 			if errors.Is(err, model.ErrNotFound) {

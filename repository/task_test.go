@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"task-manager-api/model"
@@ -10,7 +11,7 @@ import (
 func createTestUser(t *testing.T, db dbConnectionInterface, username string) int {
 	t.Helper()
 	var userID int
-	err := db.QueryRow("INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id", username, "password").Scan(&userID)
+	err := db.QueryRowContext(context.Background(), "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id", username, "password").Scan(&userID)
 	if err != nil {
 		t.Fatalf("failed to create test user: %v", err)
 	}
@@ -36,7 +37,7 @@ func TestGetTask_Found(t *testing.T) {
 	}
 
 	repo := NewTaskRepository(tx)
-	task, err := repo.GetTask(id, userID)
+	task, err := repo.GetTask(context.Background(), id, userID)
 	if err != nil {
 		t.Fatalf("GetTask(%d, %d) returned error: %v", id, userID, err)
 	}
@@ -63,7 +64,7 @@ func TestGetTask_OtherUserNotFound(t *testing.T) {
 	}
 
 	repo := NewTaskRepository(tx)
-	_, err = repo.GetTask(taskID, otherUserID)
+	_, err = repo.GetTask(context.Background(), taskID, otherUserID)
 	if !errors.Is(err, model.ErrNotFound) {
 		t.Errorf("expected ErrNotFound when getting another user's task, got: %v", err)
 	}
@@ -150,7 +151,7 @@ func TestGetTasks_FilterByDone(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			data, err := repo.GetTasks(test.filterInp, userID)
+			data, err := repo.GetTasks(context.Background(), test.filterInp, userID)
 			if err != nil {
 				t.Fatalf("error when calling GetTasks() error = %v", err)
 			}
@@ -176,12 +177,12 @@ func TestDeleteTask_Success(t *testing.T) {
 	}
 
 	repo := NewTaskRepository(tx)
-	err = repo.DeleteTask(taskID, userID)
+	err = repo.DeleteTask(context.Background(), taskID, userID)
 	if err != nil {
 		t.Fatalf("DeleteTask returned error: %v", err)
 	}
 
-	_, err = repo.GetTask(taskID, userID)
+	_, err = repo.GetTask(context.Background(), taskID, userID)
 	if !errors.Is(err, model.ErrNotFound) {
 		t.Errorf("expected ErrNotFound after deletion, got: %v", err)
 	}
@@ -196,7 +197,7 @@ func TestDeleteTask_NotFound(t *testing.T) {
 
 	userID := createTestUser(t, tx, "user_del_not_found")
 	repo := NewTaskRepository(tx)
-	err = repo.DeleteTask(999999, userID)
+	err = repo.DeleteTask(context.Background(), 999999, userID)
 	if !errors.Is(err, model.ErrNotFound) {
 		t.Errorf("expected ErrNotFound for non-existent task, got: %v", err)
 	}
@@ -220,13 +221,13 @@ func TestDeleteTask_OtherUserNotFound(t *testing.T) {
 
 	repo := NewTaskRepository(tx)
 	// Other user attempts to delete owner's task
-	err = repo.DeleteTask(taskID, otherUserID)
+	err = repo.DeleteTask(context.Background(), taskID, otherUserID)
 	if !errors.Is(err, model.ErrNotFound) {
 		t.Errorf("expected ErrNotFound when deleting another user's task, got: %v", err)
 	}
 
 	// Verify task still exists for owner
-	task, err := repo.GetTask(taskID, ownerID)
+	task, err := repo.GetTask(context.Background(), taskID, ownerID)
 	if err != nil {
 		t.Fatalf("expected owner task to still exist, got error: %v", err)
 	}
@@ -254,13 +255,13 @@ func TestUpdateTask_OtherUserNotFound(t *testing.T) {
 	repo := NewTaskRepository(tx)
 	newTitle := "hacked title"
 	isDone := true
-	_, err = repo.UpdateTask(taskID, model.UpdateTask{Title: &newTitle, Done: &isDone}, otherUserID)
+	_, err = repo.UpdateTask(context.Background(), taskID, model.UpdateTask{Title: &newTitle, Done: &isDone}, otherUserID)
 	if !errors.Is(err, model.ErrNotFound) {
 		t.Errorf("expected ErrNotFound when updating another user's task, got: %v", err)
 	}
 
 	// Verify owner task unchanged
-	task, err := repo.GetTask(taskID, ownerID)
+	task, err := repo.GetTask(context.Background(), taskID, ownerID)
 	if err != nil {
 		t.Fatalf("expected owner task to exist, got error: %v", err)
 	}

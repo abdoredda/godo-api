@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -10,9 +11,9 @@ import (
 )
 
 type userServiceInterface interface {
-	UserRegister(user model.User) (model.User, error)
-	Login(user model.User) (model.User, string, error)
-	GetUserById(id int) (model.User, error)
+	UserRegister(ctx context.Context, user model.User) (model.User, error)
+	Login(ctx context.Context, user model.User) (model.User, string, error)
+	GetUserById(ctx context.Context, id int) (model.User, error)
 }
 type UserHandler struct {
 	userService userServiceInterface
@@ -56,7 +57,7 @@ func (s *UserHandler) HandleUsers(w http.ResponseWriter, r *http.Request) {
 		user.Username = userRequest.Username
 		user.Password = userRequest.Password
 
-		data, err := s.userService.UserRegister(user)
+		data, err := s.userService.UserRegister(r.Context(), user)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Printf("error while registering user: %v", err)
@@ -99,7 +100,7 @@ func (s *UserHandler) HandleUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		s.responseWithUser(id, w)
+		s.responseWithUser(r.Context(), id, w)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
@@ -119,7 +120,7 @@ func (s *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	user.Username = loginRequest.Username
 	user.Password = loginRequest.Password
-	loggedUser, token, err := s.userService.Login(user)
+	loggedUser, token, err := s.userService.Login(r.Context(), user)
 
 	if err != nil {
 		if errors.Is(err, model.ErrInvalidCredentials) {
@@ -145,9 +146,9 @@ func (s *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *UserHandler) responseWithUser(id int, w http.ResponseWriter) {
+func (s *UserHandler) responseWithUser(ctx context.Context, id int, w http.ResponseWriter) {
 	var user model.UserResponse
-	data, err := s.userService.GetUserById(id)
+	data, err := s.userService.GetUserById(ctx, id)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			w.WriteHeader(http.StatusNotFound)

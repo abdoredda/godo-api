@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -10,9 +11,9 @@ import (
 )
 
 type userRepository interface {
-	CreateUser(user model.User) (model.User, error)
-	GetUserByUsername(username string) (model.User, error)
-	GetUserById(id int) (model.User, error)
+	CreateUser(ctx context.Context, user model.User) (model.User, error)
+	GetUserByUsername(ctx context.Context, username string) (model.User, error)
+	GetUserById(ctx context.Context, id int) (model.User, error)
 }
 
 type UserService struct {
@@ -24,7 +25,7 @@ func NewUserService(userRepository userRepository, authService *AuthService) *Us
 	return &UserService{UserRepo: userRepository, AuthService: authService}
 }
 
-func (s *UserService) UserRegister(user model.User) (model.User, error) {
+func (s *UserService) UserRegister(ctx context.Context, user model.User) (model.User, error) {
 
 	// password hashing
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
@@ -33,17 +34,17 @@ func (s *UserService) UserRegister(user model.User) (model.User, error) {
 	}
 
 	u := model.User{Username: user.Username, Password: string(hashedPassword)}
-	data, err := s.UserRepo.CreateUser(u)
+	data, err := s.UserRepo.CreateUser(ctx, u)
 	if err != nil {
-		return model.User{}, fmt.Errorf("register service: error when trying to create new user error = %v", err)
+		return model.User{}, fmt.Errorf("register service: error when trying to create new user: %w", err)
 	}
 
 	return data, nil
 }
 
-func (s *UserService) Login(user model.User) (model.User, string, error) {
+func (s *UserService) Login(ctx context.Context, user model.User) (model.User, string, error) {
 
-	data, err := s.UserRepo.GetUserByUsername(user.Username)
+	data, err := s.UserRepo.GetUserByUsername(ctx, user.Username)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			log.Printf("login attempt for nonexistent user username = %v", user.Username)
@@ -66,8 +67,8 @@ func (s *UserService) Login(user model.User) (model.User, string, error) {
 	return data, token, nil
 }
 
-func (s *UserService) GetUserById(id int) (model.User, error) {
-	data, err := s.UserRepo.GetUserById(id)
+func (s *UserService) GetUserById(ctx context.Context, id int) (model.User, error) {
+	data, err := s.UserRepo.GetUserById(ctx, id)
 	if err != nil {
 		return model.User{}, fmt.Errorf("get user by id: %w", err)
 	}

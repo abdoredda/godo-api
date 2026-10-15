@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"task-manager-api/model"
 )
@@ -13,17 +14,17 @@ func NewUserRepository(db dbConnectionInterface) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-func (s *UserRepository) CreateUser(user model.User) (model.User, error) {
-	err := s.db.QueryRow("INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id", user.Username, user.Password).Scan(&user.ID)
+func (s *UserRepository) CreateUser(ctx context.Context, user model.User) (model.User, error) {
+	err := s.db.QueryRowContext(ctx, "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id", user.Username, user.Password).Scan(&user.ID)
 	if err != nil {
 		return model.User{}, err
 	}
 	return user, nil
 }
 
-func (s *UserRepository) GetUserByUsername(username string) (model.User, error) {
+func (s *UserRepository) GetUserByUsername(ctx context.Context, username string) (model.User, error) {
 	var user model.User
-	err := s.db.QueryRow("SELECT id, username, password FROM users WHERE username = $1", username).Scan(&user.ID, &user.Username, &user.Password)
+	err := s.db.QueryRowContext(ctx, "SELECT id, username, password FROM users WHERE username = $1", username).Scan(&user.ID, &user.Username, &user.Password)
 	if err == sql.ErrNoRows {
 		return model.User{}, model.ErrNotFound
 	}
@@ -34,9 +35,9 @@ func (s *UserRepository) GetUserByUsername(username string) (model.User, error) 
 	return user, nil
 }
 
-func (s *UserRepository) GetUserById(id int) (model.User, error) {
+func (s *UserRepository) GetUserById(ctx context.Context, id int) (model.User, error) {
 	var user model.User
-	err := s.db.QueryRow("SELECT id, username, password FROM users WHERE id = $1", id).Scan(&user.ID, &user.Username, &user.Password)
+	err := s.db.QueryRowContext(ctx, "SELECT id, username, password FROM users WHERE id = $1", id).Scan(&user.ID, &user.Username, &user.Password)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return model.User{}, model.ErrNotFound
