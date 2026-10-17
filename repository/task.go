@@ -78,7 +78,7 @@ func (r *TaskRepository) GetTask(ctx context.Context, id int, userID int) (model
 }
 
 func (r *TaskRepository) GetTasks(ctx context.Context, filter model.TaskFilter, userID int) ([]model.Task, error) {
-	var tasks []model.Task
+	tasks := []model.Task{}
 	var args []any
 	offset := (filter.Page - 1) * filter.Limit
 
